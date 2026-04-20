@@ -8,20 +8,8 @@ import sys
 import os
 
 sys.path.insert(0, os.path.dirname(__file__))
-from mock_data import SIMULATED_FRAMES, TELEMETRY_DATA
+from mock_data import SIMULATED_FRAMES, TELEMETRY_DATA, MOCK_ANALYSES
 from frame_index import FrameIndex
-
-# ─── Mock analysis (without calling Claude, for unit tests) ──────────────────
-
-MOCK_ANALYSES = {
-    0: {"objects": ["empty driveway"], "event_type": "normal", "threat_level": "low", "summary": "No activity at main gate", "alert": None, "log_entry": "No activity at Main Gate, 00:00."},
-    1: {"objects": ["person", "dark hoodie"], "event_type": "person", "threat_level": "high", "summary": "Suspicious person loitering at main gate", "alert": "Person loitering at main gate, 00:01.", "log_entry": "Person in dark hoodie spotted loitering at Main Gate, 00:01."},
-    2: {"objects": ["Blue Ford F150", "truck"], "event_type": "vehicle", "threat_level": "low", "summary": "Blue Ford F150 entered parking lot", "alert": None, "log_entry": "Blue Ford F150 spotted entering Parking Lot, 00:05."},
-    3: {"objects": ["Blue Ford F150", "garage"], "event_type": "vehicle", "threat_level": "low", "summary": "Blue Ford F150 parked at garage", "alert": None, "log_entry": "Blue Ford F150 parked at Garage bay 2, 00:12."},
-    5: {"objects": ["unknown individual"], "event_type": "intrusion", "threat_level": "high", "summary": "Unknown individual at main gate without badge", "alert": "Unidentified person at main gate without badge, 00:35.", "log_entry": "Unknown individual at Main Gate, no badge visible, 00:35."},
-    9: {"objects": ["two individuals", "tools", "rooftop"], "event_type": "safety_violation", "threat_level": "critical", "summary": "Safety violation on rooftop - no harnesses", "alert": "SAFETY VIOLATION: Two individuals on rooftop without harnesses, 01:20.", "log_entry": "Safety violation: two individuals on rooftop without safety harnesses, 01:20."},
-    10: {"objects": ["Blue Ford F150"], "event_type": "vehicle", "threat_level": "medium", "summary": "Blue Ford F150 returned for second visit", "alert": "Blue Ford F150 second entry today - flagged for review, 02:00.", "log_entry": "Blue Ford F150 re-entered Parking Lot (2nd visit), 02:00."},
-}
 
 
 def populate_mock_index() -> FrameIndex:
