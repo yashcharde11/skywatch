@@ -1,11 +1,9 @@
 """Agents package"""
-from .sub_agents.code_assistant import agent as coding_assistant
-from .sub_agents.code_reviewer import agent as code_reviewer
-from .sub_agents.tech_writer import agent as technical_writer
+
 from .sub_agents.sec_analyst import agent as drone_security_analyst
-from .sub_agents.debug_expert import agent as debugging_expert
 from .sub_agents.vision import agent as vision_specialist
 from .sub_agents.telemetry import agent as telemetry_analyst
+from .sub_agents.red_team import agent as red_team_agent
 """Coding Assistant Sub-Agent"""
 """Debugging Expert Sub-Agent"""
 import sys
