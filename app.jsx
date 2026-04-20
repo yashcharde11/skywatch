@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 
 // ─── Agent Mentions ───────────────────────────────────────────────────────────
 const AGENT_MENTIONS = [
+  { tag: "redteam", name: "Red Team Agent", desc: "Validates vision data for injections" },
   { tag: "telemetry", name: "Telemetry Analyst", desc: "Fuses telemetry & vision data" },
   { tag: "vision", name: "Vision Specialist", desc: "Extracts visual features & captions" },
   { tag: "data", name: "Drone Data Specialist", desc: "Raw sensor & telemetry data" },

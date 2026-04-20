@@ -20,14 +20,11 @@ from mock_data import SIMULATED_FRAMES, TELEMETRY_DATA
 from frame_index import FrameIndex
 from services.state import FrameAnalysisState
 from config import GROQ_API_KEY, sky_ai
-from services.sub_agents.code_assistant import agent as coding_assistant
-from services.sub_agents.code_reviewer import agent as code_reviewer
-from services.sub_agents.tech_writer import agent as technical_writer
 from services.sub_agents.sec_analyst import agent as drone_security_analyst
 from services.sub_agents.data_ops import agent as drone_data_specialist
-from services.sub_agents.debug_expert import agent as debugging_expert
 from services.sub_agents.vision import agent as vision_specialist
 from services.sub_agents.telemetry import agent as telemetry_analyst
+from services.sub_agents.red_team import agent as red_team_agent
 
 # Initialize the LangChain Chat model with Groq
 llm = sky_ai
@@ -133,21 +130,6 @@ class SupervisorState(TypedDict):
     target_agent: Optional[str]
 
 # Agent nodes that call the sub-agents
-def coding_assistant_supervisor_node(state: SupervisorState) -> dict:
-    result = coding_assistant.run(state["input_text"])
-    return {"result": result}
-
-def code_reviewer_supervisor_node(state: SupervisorState) -> dict:
-    result = code_reviewer.run(state["input_text"])
-    return {"result": result}
-
-def technical_writer_supervisor_node(state: SupervisorState) -> dict:
-    result = technical_writer.run(state["input_text"])
-    return {"result": result}
-
-def debugging_expert_supervisor_node(state: SupervisorState) -> dict:
-    result = debugging_expert.run(state["input_text"])
-    return {"result": result}
 
 def drone_security_analyst_supervisor_node(state: SupervisorState) -> dict:
     if not state["index"] or not state["index"].frames:
@@ -173,6 +155,12 @@ def telemetry_analyst_supervisor_node(state: SupervisorState) -> dict:
     result = telemetry_analyst.run(state["input_text"], state["index"])
     return {"result": result}
 
+def red_team_agent_supervisor_node(state: SupervisorState) -> dict:
+    if not state["index"] or not state["index"].frames:
+        return {"result": PROMPTS["no_patrol_data_msg"]}
+    result = red_team_agent.run(state["input_text"], state["index"])
+    return {"result": result}
+
 def router_node(state: SupervisorState) -> dict:
     # If the user explicitly targeted an agent via @mention, skip the routing logic
     if state.get("target_agent"):
@@ -183,7 +171,7 @@ def router_node(state: SupervisorState) -> dict:
     raw_response = msg.content.strip().replace('"', '')
     
     # Robustly map the LLM's response to the correct node
-    valid_agents = ["Coding Assistant", "Code Reviewer", "Technical Writer", "Debugging Expert", "Drone Security Analyst", "Drone Data Specialist", "Vision Specialist", "Telemetry Analyst", "General"]
+    valid_agents = ["Coding Assistant", "Code Reviewer", "Technical Writer", "Debugging Expert", "Drone Security Analyst", "Drone Data Specialist", "Vision Specialist", "Telemetry Analyst", "Red Team Agent", "General"]
     next_node = "General"  # Fallback
     for agent in valid_agents:
         if agent.lower() in raw_response.lower():
@@ -195,19 +183,16 @@ def router_node(state: SupervisorState) -> dict:
 # Build the supervisor graph
 supervisor_workflow = StateGraph(SupervisorState)
 supervisor_workflow.add_node("router", router_node)
-supervisor_workflow.add_node("Coding Assistant", coding_assistant_supervisor_node)
-supervisor_workflow.add_node("Code Reviewer", code_reviewer_supervisor_node)
-supervisor_workflow.add_node("Technical Writer", technical_writer_supervisor_node)
-supervisor_workflow.add_node("Debugging Expert", debugging_expert_supervisor_node)
 supervisor_workflow.add_node("Drone Security Analyst", drone_security_analyst_supervisor_node)
 supervisor_workflow.add_node("Drone Data Specialist", drone_data_specialist_supervisor_node)
 supervisor_workflow.add_node("Vision Specialist", vision_specialist_supervisor_node)
 supervisor_workflow.add_node("Telemetry Analyst", telemetry_analyst_supervisor_node)
+supervisor_workflow.add_node("Red Team Agent", red_team_agent_supervisor_node)
 supervisor_workflow.add_node("General", lambda state: {"result": PROMPTS["general_fallback_msg"]})
 
 supervisor_workflow.add_edge(START, "router")
-supervisor_workflow.add_conditional_edges("router", lambda s: s['next_agent'], {k: k for k in ["Coding Assistant", "Code Reviewer", "Technical Writer", "Debugging Expert", "Drone Security Analyst", "Drone Data Specialist", "Vision Specialist", "Telemetry Analyst", "General"]})
-for agent in ["Coding Assistant", "Code Reviewer", "Technical Writer", "Debugging Expert", "Drone Security Analyst", "Drone Data Specialist", "Vision Specialist", "Telemetry Analyst", "General"]:
+supervisor_workflow.add_conditional_edges("router", lambda s: s['next_agent'], {k: k for k in ["Coding Assistant", "Code Reviewer", "Technical Writer", "Debugging Expert", "Drone Security Analyst", "Drone Data Specialist", "Vision Specialist", "Telemetry Analyst", "Red Team Agent", "General"]})
+for agent in ["Coding Assistant", "Code Reviewer", "Technical Writer", "Debugging Expert", "Drone Security Analyst", "Drone Data Specialist", "Vision Specialist", "Telemetry Analyst", "Red Team Agent", "General"]:
     supervisor_workflow.add_edge(agent, END)
 
 supervisor_app = supervisor_workflow.compile()

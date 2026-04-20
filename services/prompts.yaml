@@ -45,6 +45,7 @@ routing_prompt: |
   - "Drone Data Specialist"
   - "Vision Specialist"
   - "Telemetry Analyst"
+  - "Red Team Agent"
   - "General"
 
   Agents:
@@ -56,6 +57,7 @@ routing_prompt: |
   - Drone Data Specialist: For answering technical questions about raw drone sensor data, such as telemetry (altitude, speed, battery), coordinates, and patrol routes.
   - Vision Specialist: For extracting visual features, identifying specific objects (e.g., vehicles, people), and describing context from the patrol data.
   - Telemetry Analyst: For answering questions that require correlating drone telemetry (speed, altitude) with visual events to validate things like loitering, motion, or tracking.
+  - Red Team Agent: For identifying prompt injections, PII leakage, adversarial patches, and mathematically impossible detections in vision data.
   - General: For any other questions that clearly do not fit the above categories. When in doubt about security, threats, or risks, route to the Drone Security Analyst.
 
   User Input:
