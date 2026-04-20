@@ -23,8 +23,8 @@
 │                                                           │
 │  ┌─────────────┐    ┌──────────────┐    ┌─────────────┐ │
 │  │  Telemetry  │───▶│   AI Agent   │───▶│  Frame Index│ │
-│  │  Simulator  │    │  (Claude API)│    │  (In-Memory │ │
-│  └─────────────┘    └──────────────┘    │   Key-Value)│ │
+│  │  Simulator  │    │ (LangGraph + │    │  (In-Memory │ │
+│  └─────────────┘    │   Groq API)  │    │   Key-Value)│ │
 │                            │            └─────────────┘ │
 │  ┌─────────────┐           │            ┌─────────────┐ │
 │  │    Video    │───────────┘            │  Alert      │ │
@@ -43,14 +43,14 @@
 | Component | Role |
 |-----------|------|
 | `services/agent.py` | Core LangGraph supervisor, node definitions, and routing logic |
-| `services/sub_agents/`| Specialized agents (Vision, Telemetry, Security, Coding, etc.) |
+| `services/sub_agents/`| Specialized agents (Vision, Telemetry, Security, Data Ops, Red Team) |
 | `prompts_loader.py` | Dynamic file loader for encapsulating sub-agent prompts |
 | `server.py` | FastAPI REST + SSE streaming endpoint |
 | `app.jsx` | React dashboard with live view, frame log, and @mention auto-complete chat |
 
 ### Data Flow
 1. **Simulated frames** (text descriptions) + **telemetry** feed into the agent
-2. Claude analyzes each frame in context of the last 5 events
+2. The LLM (Llama 3 via Groq) analyzes each frame in context of the last 5 events
 3. Structured JSON analysis is stored in the **FrameIndex** (keyed by frame_id, timestamp, location, threat_level, objects)
 4. High-threat analyses trigger **alerts** (persisted separately)
 5. Frontend streams events via SSE and renders the live dashboard
@@ -62,7 +62,7 @@
 ### Prerequisites
 - Python 3.10+
 - Node.js 18+
-- An Anthropic API key (get one at https://console.anthropic.com)
+- A Groq API key (get one at https://console.groq.com)
 
 ### Backend Setup
 
