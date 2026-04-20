@@ -20,4 +20,4 @@ system_prompt = get_prompt(__file__)
 
 def run(question: str, index: FrameIndex) -> str:
     """Answer follow-up questions about the patrol's raw data."""
-    return run_llm(system_prompt, question, context_data=json.dumps(index.export(), indent=2))
+    return run_llm(system_prompt, question, context_data=index.to_llm_context())

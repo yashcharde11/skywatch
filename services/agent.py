@@ -117,8 +117,11 @@ def generate_daily_summary(index: FrameIndex) -> str:
         total_alerts=stats['total_alerts']
     )
 
-    msg = llm.invoke([HumanMessage(content=prompt)])
-    return msg.content.strip()
+    try:
+        msg = llm.invoke([HumanMessage(content=prompt)])
+        return msg.content.strip()
+    except Exception as e:
+        return f"Summary unavailable due to API rate limits or errors: {e}"
 
 # ─── Supervisor Agent ───────────────────────────────────────────────────────────
 
@@ -161,19 +164,31 @@ def red_team_agent_supervisor_node(state: SupervisorState) -> dict:
     result = red_team_agent.run(state["input_text"], state["index"])
     return {"result": result}
 
+AVAILABLE_AGENTS = [
+    "Drone Security Analyst", 
+    "Drone Data Specialist", 
+    "Vision Specialist", 
+    "Telemetry Analyst", 
+    "Red Team Agent", 
+    "General"
+]
+
 def router_node(state: SupervisorState) -> dict:
     # If the user explicitly targeted an agent via @mention, skip the routing logic
     if state.get("target_agent"):
         return {"next_agent": state["target_agent"]}
 
     prompt = PROMPTS["routing_prompt"].format(input_text=state["input_text"])
-    msg = llm.invoke([HumanMessage(content=prompt)])
-    raw_response = msg.content.strip().replace('"', '')
+    try:
+        msg = llm.invoke([HumanMessage(content=prompt)])
+        raw_response = msg.content.strip().replace('"', '')
+    except Exception as e:
+        print(f"  ⚠ Router LLM error (defaulting to General): {e}")
+        raw_response = "General"
     
     # Robustly map the LLM's response to the correct node
-    valid_agents = ["Coding Assistant", "Code Reviewer", "Technical Writer", "Debugging Expert", "Drone Security Analyst", "Drone Data Specialist", "Vision Specialist", "Telemetry Analyst", "Red Team Agent", "General"]
     next_node = "General"  # Fallback
-    for agent in valid_agents:
+    for agent in AVAILABLE_AGENTS:
         if agent.lower() in raw_response.lower():
             next_node = agent
             break
@@ -191,8 +206,8 @@ supervisor_workflow.add_node("Red Team Agent", red_team_agent_supervisor_node)
 supervisor_workflow.add_node("General", lambda state: {"result": PROMPTS["general_fallback_msg"]})
 
 supervisor_workflow.add_edge(START, "router")
-supervisor_workflow.add_conditional_edges("router", lambda s: s['next_agent'], {k: k for k in ["Coding Assistant", "Code Reviewer", "Technical Writer", "Debugging Expert", "Drone Security Analyst", "Drone Data Specialist", "Vision Specialist", "Telemetry Analyst", "Red Team Agent", "General"]})
-for agent in ["Coding Assistant", "Code Reviewer", "Technical Writer", "Debugging Expert", "Drone Security Analyst", "Drone Data Specialist", "Vision Specialist", "Telemetry Analyst", "Red Team Agent", "General"]:
+supervisor_workflow.add_conditional_edges("router", lambda s: s['next_agent'], {k: k for k in AVAILABLE_AGENTS})
+for agent in AVAILABLE_AGENTS:
     supervisor_workflow.add_edge(agent, END)
 
 supervisor_app = supervisor_workflow.compile()
@@ -206,8 +221,11 @@ def run_supervisor(input_text: str, index: Optional[FrameIndex] = None, target_a
         "next_agent": "General",
         "target_agent": target_agent
     }
-    result_state = supervisor_app.invoke(state)
-    return result_state.get("result", "Error: No result returned from agents.")
+    try:
+        result_state = supervisor_app.invoke(state)
+        return result_state.get("result", "Error: No result returned from agents.")
+    except Exception as e:
+        return f"Agent execution failed due to API error: {e}"
 
 
 # ─── Main Pipeline ──────────────────────────────────────────────────────────────
@@ -251,7 +269,8 @@ def run_security_patrol() -> dict:
             timestamp=frame["time"],
             location=frame["location"],
             raw_description=frame["description"],
-            ai_analysis=analysis
+            ai_analysis=analysis,
+            telemetry=telemetry
         )
         
         # Log event
@@ -260,29 +279,35 @@ def run_security_patrol() -> dict:
             "time": frame["time"],
             "location": frame["location"],
             "log": analysis.get("log_entry", ""),
-            "threat_level": analysis["threat_level"]
+            "threat_level": analysis.get("threat_level", "low"),
+            "telemetry": telemetry
         }
         index.log_event(log_entry)
         print(f"  📋 LOG: {analysis.get('log_entry', '')}")
         
         # Handle alerts
-        if analysis.get("alert"):
+        threat_level = analysis.get("threat_level", "low").lower()
+        has_alert = bool(analysis.get("alert"))
+        
+        if has_alert or threat_level in ["medium", "high", "critical"]:
+            alert_msg = analysis.get("alert") or analysis.get("summary", "Potential threat detected.")
             alert = {
                 "frame_id": i+1,
                 "time": frame["time"],
                 "location": frame["location"],
-                "message": analysis["alert"],
-                "threat_level": analysis["threat_level"],
-                "objects": analysis["objects"]
+                "message": alert_msg,
+                "threat_level": threat_level if threat_level != "low" else "medium",
+                "objects": analysis.get("objects", []),
+                "telemetry": telemetry
             }
             index.add_alert(alert)
-            print(f"  🚨 ALERT [{analysis['threat_level'].upper()}]: {analysis['alert']}")
+            print(f"  🚨 ALERT [{alert['threat_level'].upper()}]: {alert_msg}")
         
         # Update context
         context_history.append({
             "time": frame["time"],
             "summary": analysis.get("summary", ""),
-            "threat_level": analysis["threat_level"]
+            "threat_level": analysis.get("threat_level", "low")
         })
         
         time.sleep(0.3)  # Small delay to avoid rate limits

@@ -3,7 +3,7 @@ FastAPI backend server
 Exposes the drone security agent via REST API for the frontend dashboard
 """
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
@@ -114,6 +114,26 @@ def get_summary():
     return {"summary": summary}
 
 
+@app.post("/api/load_patrol")
+async def load_patrol_file(file: UploadFile = File(...)):
+    """Load a previously exported patrol_results.json file into the server."""
+    global patrol_index, patrol_complete
+    
+    if not file.filename.endswith('.json'):
+        raise HTTPException(status_code=400, detail="Only JSON files are supported.")
+    
+    try:
+        contents = await file.read()
+        data = json.loads(contents)
+        
+        patrol_index = FrameIndex()
+        patrol_index.load_from_dict(data)
+        patrol_complete = True
+        
+        return {"message": "File loaded successfully", "stats": patrol_index.get_summary_stats()}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to load JSON: {str(e)}")
+
 @app.get("/api/patrol/stream")
 async def stream_patrol():
     """Stream patrol events as server-sent events (SSE)."""
@@ -154,7 +174,8 @@ async def stream_patrol():
                 timestamp=frame["time"],
                 location=frame["location"],
                 raw_description=frame["description"],
-                ai_analysis=analysis
+                ai_analysis=analysis,
+                telemetry=telemetry
             )
             
             log_entry = {
@@ -162,18 +183,24 @@ async def stream_patrol():
                 "time": frame["time"],
                 "location": frame["location"],
                 "log": analysis.get("log_entry", ""),
-                "threat_level": analysis["threat_level"]
+                "threat_level": analysis.get("threat_level", "low"),
+                "telemetry": telemetry
             }
             patrol_index.log_event(log_entry)
             
-            if analysis.get("alert"):
+            threat_level = analysis.get("threat_level", "low").lower()
+            has_alert = bool(analysis.get("alert"))
+            
+            if has_alert or threat_level in ["medium", "high", "critical"]:
+                alert_msg = analysis.get("alert") or analysis.get("summary", "Potential threat detected.")
                 alert = {
                     "frame_id": i+1,
                     "time": frame["time"],
                     "location": frame["location"],
-                    "message": analysis["alert"],
-                    "threat_level": analysis["threat_level"],
-                    "objects": analysis["objects"]
+                    "message": alert_msg,
+                    "threat_level": threat_level if threat_level != "low" else "medium",
+                    "objects": analysis.get("objects", []),
+                    "telemetry": telemetry
                 }
                 patrol_index.add_alert(alert)
                 yield f"data: {json.dumps({'type': 'alert', 'alert': alert})}\n\n"
@@ -181,7 +208,7 @@ async def stream_patrol():
             context_history.append({
                 "time": frame["time"],
                 "summary": analysis.get("summary", ""),
-                "threat_level": analysis["threat_level"]
+                "threat_level": analysis.get("threat_level", "low")
             })
             
             yield f"data: {json.dumps({'type': 'frame_complete', 'frame_id': i+1, 'analysis': analysis, 'telemetry': telemetry})}\n\n"
