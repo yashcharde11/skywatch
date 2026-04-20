@@ -1,0 +1,9 @@
+# Python dependencies for this project
+# - `services/agent.py` uses Groq's SDK
+# - `server.py` exposes a FastAPI backend (run via Uvicorn)
+
+langchain-groq
+langgraph
+fastapi
+uvicorn[standard]
+python-dotenv

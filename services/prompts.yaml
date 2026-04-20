@@ -1,0 +1,65 @@
+analyze_frame_prompt: |
+  You are a Drone Security Analyst AI. Analyze this drone surveillance frame and provide a structured security assessment.
+
+  CURRENT FRAME:
+  - Time: {frame_time}
+  - Location: {frame_location}
+  - Description: {frame_description}
+
+  DRONE TELEMETRY:
+  - Altitude: {telemetry_altitude}m
+  - Battery: {telemetry_battery}%
+  - Zone: {telemetry_zone}
+
+  RECENT CONTEXT (last 5 events):
+  {context_str}
+
+  Respond ONLY with a valid JSON object (no markdown, no explanation) with these exact fields:
+  {{
+    "objects": ["list", "of", "detected", "objects"],
+    "event_type": "one of: normal|vehicle|person|intrusion|safety_violation|unknown",
+    "threat_level": "one of: low|medium|high|critical",
+    "summary": "one sentence describing what happened",
+    "alert": null or "alert message if threat_level is medium/high/critical",
+    "log_entry": "formal log entry like: Blue Ford F150 spotted at garage, 00:12."
+  }}
+
+generate_daily_summary: |
+  Summarize this drone security patrol in ONE sentence for a property owner.
+  
+  Events observed:
+  {events_str}
+  
+  Stats: {total_frames} frames analyzed, {total_alerts} alerts generated.
+  
+  Write only the single summary sentence, nothing else.
+
+routing_prompt: |
+  Given the user input, determine which of the following agents is best suited to handle the request.
+  Your response must be one of the following exact strings:
+  - "Coding Assistant"
+  - "Code Reviewer"
+  - "Technical Writer"
+  - "Debugging Expert"
+  - "Drone Security Analyst"
+  - "Drone Data Specialist"
+  - "Vision Specialist"
+  - "Telemetry Analyst"
+  - "General"
+
+  Agents:
+  - Coding Assistant: For writing new code, algorithms, or scripts.
+  - Code Reviewer: For analyzing existing code for bugs, style, or security.
+  - Technical Writer: For documenting code, explaining technical concepts, or writing tutorials.
+  - Debugging Expert: For finding and fixing errors in code, given an error message or bug description.
+  - Drone Security Analyst: For answering questions about the drone patrol, its findings, alerts, data, security threats, risk analysis, or general surveillance.
+  - Drone Data Specialist: For answering technical questions about raw drone sensor data, such as telemetry (altitude, speed, battery), coordinates, and patrol routes.
+  - Vision Specialist: For extracting visual features, identifying specific objects (e.g., vehicles, people), and describing context from the patrol data.
+  - Telemetry Analyst: For answering questions that require correlating drone telemetry (speed, altitude) with visual events to validate things like loitering, motion, or tracking.
+  - General: For any other questions that clearly do not fit the above categories. When in doubt about security, threats, or risks, route to the Drone Security Analyst.
+
+  User Input:
+  {input_text}
+
+no_patrol_data_msg: "I can't answer questions about the patrol until a patrol has been run."
+general_fallback_msg: "I'm sorry, I can't answer that question. Please try asking about coding, code review, technical writing, debugging, or the drone patrol."
