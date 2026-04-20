@@ -42,10 +42,11 @@
 ### Components
 | Component | Role |
 |-----------|------|
-| `agent.py` | Core AI pipeline: frame analysis, alert generation, daily summary |
+| `services/agent.py` | Core LangGraph supervisor, node definitions, and routing logic |
+| `services/sub_agents/`| Specialized agents (Vision, Telemetry, Security, Coding, etc.) |
+| `prompts_loader.py` | Dynamic file loader for encapsulating sub-agent prompts |
 | `server.py` | FastAPI REST + SSE streaming endpoint |
-| `tests.py` | Full test suite — 26 test cases |
-| `App.jsx` | React dashboard with live view, frame log, search, and AI chat |
+| `app.jsx` | React dashboard with live view, frame log, and @mention auto-complete chat |
 
 ### Data Flow
 1. **Simulated frames** (text descriptions) + **telemetry** feed into the agent
@@ -66,19 +67,15 @@
 ### Backend Setup
 
 ```bash
-# Clone and enter the project
-git clone <your-repo-url>
-cd drone-security-agent
-
 # Create virtual environment
 python -m venv venv
 source venv/bin/activate  # Windows: venv\Scripts\activate
 
 # Install dependencies
-pip install anthropic fastapi uvicorn
+pip install langchain-groq langgraph fastapi uvicorn python-dotenv
 
 # Set your API key
-export ANTHROPIC_API_KEY="sk-ant-..."  # Windows: set ANTHROPIC_API_KEY=sk-ant-...
+export GROQ_API_KEY="gsk-..."  # Windows: set GROQ_API_KEY=gsk-...
 ```
 
 ### Run the CLI Agent (no frontend needed)
